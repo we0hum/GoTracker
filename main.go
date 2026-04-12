@@ -1,12 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type OrderRepository interface {
 	Add(order Order)
-	GetByID(id int) (Order, bool)
+	GetByID(id int) (Order, error)
 	GetAll() []Order
-	Update(order Order)
+	Update(order Order) error
 }
 
 type InMemoryOrderRepo struct {
@@ -27,9 +30,12 @@ func (or *InMemoryOrderRepo) Add(order Order) {
 	or.orders[order.ID] = order
 }
 
-func (or *InMemoryOrderRepo) GetByID(id int) (Order, bool) {
-	order, ok := or.orders[id]
-	return order, ok
+func (or *InMemoryOrderRepo) GetByID(id int) (Order, error) {
+	if order, ok := or.orders[id]; !ok {
+		return Order{}, ErrOrderNotFound
+	} else {
+		return order, nil
+	}
 }
 
 func (or *InMemoryOrderRepo) GetAll() []Order {
@@ -40,8 +46,12 @@ func (or *InMemoryOrderRepo) GetAll() []Order {
 	return orders
 }
 
-func (or *InMemoryOrderRepo) Update(order Order) {
+func (or *InMemoryOrderRepo) Update(order Order) error {
+	if _, ok := or.orders[order.ID]; !ok {
+		return ErrOrderNotFound
+	}
 	or.orders[order.ID] = order
+	return nil
 }
 
 func PrintAllOrders(repo *InMemoryOrderRepo) {
@@ -55,6 +65,8 @@ func NewInMemoryOrderRepo() *InMemoryOrderRepo {
 		orders: make(map[int]Order),
 	}
 }
+
+var ErrOrderNotFound = errors.New("order not found")
 
 func main() {
 	repo := NewInMemoryOrderRepo()
@@ -75,12 +87,25 @@ func main() {
 	fmt.Println("[Before]")
 	PrintAllOrders(repo)
 
-	order, found := repo.GetByID(1)
-	if found {
+	order, err := repo.GetByID(1)
+	if err != nil {
+		fmt.Println("Ошибка:", err)
+	} else {
 		order.MarkDelivered()
-		repo.Update(order)
+		err := repo.Update(order)
+		if err != nil {
+			fmt.Println("Ошибка:", err)
+		} else {
+			fmt.Println("\nUpdated order", order.ID)
+		}
 	}
 
 	fmt.Println("\n[After]")
 	PrintAllOrders(repo)
+
+	nonExistent := Order{ID: 999, Customer: "Петя", Address: "Питер"}
+	err = repo.Update(nonExistent)
+	if err != nil {
+		fmt.Println("\nОшибка:", err)
+	}
 }
