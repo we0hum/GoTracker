@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"sync"
 )
 
 type OrderRepository interface {
@@ -13,6 +14,7 @@ type OrderRepository interface {
 }
 
 type InMemoryOrderRepo struct {
+	mu     sync.Mutex
 	orders map[int]Order
 }
 type Order struct {
@@ -27,10 +29,14 @@ func (o *Order) MarkDelivered() {
 }
 
 func (or *InMemoryOrderRepo) Add(order Order) {
+	or.mu.Lock()
+	defer or.mu.Unlock()
 	or.orders[order.ID] = order
 }
 
 func (or *InMemoryOrderRepo) GetByID(id int) (Order, error) {
+	or.mu.Lock()
+	defer or.mu.Unlock()
 	if order, ok := or.orders[id]; !ok {
 		return Order{}, ErrOrderNotFound
 	} else {
@@ -39,6 +45,8 @@ func (or *InMemoryOrderRepo) GetByID(id int) (Order, error) {
 }
 
 func (or *InMemoryOrderRepo) GetAll() []Order {
+	or.mu.Lock()
+	defer or.mu.Unlock()
 	orders := []Order{}
 	for _, order := range or.orders {
 		orders = append(orders, order)
@@ -47,6 +55,8 @@ func (or *InMemoryOrderRepo) GetAll() []Order {
 }
 
 func (or *InMemoryOrderRepo) Update(order Order) error {
+	or.mu.Lock()
+	defer or.mu.Unlock()
 	if _, ok := or.orders[order.ID]; !ok {
 		return ErrOrderNotFound
 	}
@@ -66,10 +76,37 @@ func NewInMemoryOrderRepo() *InMemoryOrderRepo {
 	}
 }
 
+func DeliverMany(repo OrderRepository, ids []int) {
+	var wg sync.WaitGroup
+
+	for _, id := range ids {
+		wg.Add(1)
+		idOrder := id
+		go func(id int) {
+			defer wg.Done()
+			order, err := repo.GetByID(id)
+			if err == nil {
+				order.MarkDelivered()
+				err1 := repo.Update(order)
+				if err1 != nil {
+					fmt.Printf("Ошибка при обновлении ID %d: %v\n", id, err1)
+				} else {
+					fmt.Printf("Order %d delivered\n", order.ID)
+				}
+			} else {
+				fmt.Printf("Ошибка:%v (ID: %d)\n", err, id)
+			}
+		}(idOrder)
+	}
+
+	wg.Wait()
+}
+
 var ErrOrderNotFound = errors.New("order not found")
 
 func main() {
 	repo := NewInMemoryOrderRepo()
+	ids := []int{1, 2, 3, 99}
 
 	repo.Add(Order{
 		ID:          1,
@@ -83,29 +120,25 @@ func main() {
 		Address:     "Питер",
 		IsDelivered: false,
 	})
+	repo.Add(Order{
+		ID:          3,
+		Customer:    "Петр",
+		Address:     "Казань",
+		IsDelivered: false,
+	})
+	repo.Add(Order{
+		ID:          4,
+		Customer:    "Катя",
+		Address:     "ЕКБ",
+		IsDelivered: false,
+	})
 
-	fmt.Println("[Before]")
+	fmt.Println("[До доставки]")
 	PrintAllOrders(repo)
 
-	order, err := repo.GetByID(1)
-	if err != nil {
-		fmt.Println("Ошибка:", err)
-	} else {
-		order.MarkDelivered()
-		err := repo.Update(order)
-		if err != nil {
-			fmt.Println("Ошибка:", err)
-		} else {
-			fmt.Println("\nUpdated order", order.ID)
-		}
-	}
+	fmt.Println("\n[Результаты доставки]")
+	DeliverMany(repo, ids)
 
-	fmt.Println("\n[After]")
+	fmt.Println("\n[После доставки]")
 	PrintAllOrders(repo)
-
-	nonExistent := Order{ID: 999, Customer: "Петя", Address: "Питер"}
-	err = repo.Update(nonExistent)
-	if err != nil {
-		fmt.Println("\nОшибка:", err)
-	}
 }
