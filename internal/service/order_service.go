@@ -1,6 +1,7 @@
 package service
 
 import (
+	"GoTracker/internal/order"
 	"GoTracker/internal/repository"
 	"fmt"
 	"sync"
@@ -16,7 +17,7 @@ func NewOrderService(repo repository.Repository) *OrderService {
 
 func (os *OrderService) PrintAllOrders() {
 	for _, order := range os.repo.GetAll() {
-		fmt.Printf("ID: %d, %s, Delivered: %v\n", order.ID, order.Customer, order.IsDelivered)
+		fmt.Printf("ID: %d, %s, Delivered: %v\n", order.ID, order.Customer, order.Status)
 	}
 }
 
@@ -44,4 +45,29 @@ func (os *OrderService) DeliverMany(ids []int) {
 	}
 
 	wg.Wait()
+}
+
+func (os *OrderService) CreateOrder(o order.Order) (order.Order, error) {
+	os.repo.Add(o)
+	return o, nil
+}
+
+func (os *OrderService) ListOrders() ([]order.Order, error) {
+	return os.repo.GetAll(), nil
+}
+
+func (os *OrderService) UpdateOrder(id int, address string, status string) (order.Order, error) {
+	o, err := os.repo.GetByID(id)
+	if err != nil {
+		return order.Order{}, err
+	}
+
+	o.Address = address
+	o.Status = status
+
+	if err := os.repo.Update(o); err != nil {
+		return order.Order{}, err
+	}
+
+	return o, nil
 }

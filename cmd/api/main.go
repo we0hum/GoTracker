@@ -1,7 +1,10 @@
 package main
 
 import (
-	"GoTracker/internal/order"
+	"log"
+	"net/http"
+
+	apphttp "GoTracker/internal/http"
 	"GoTracker/internal/repository"
 	"GoTracker/internal/service"
 )
@@ -9,32 +12,12 @@ import (
 func main() {
 	repo := repository.NewInMemoryOrderRepo()
 	svc := service.NewOrderService(repo)
+	server := apphttp.NewHandler(svc)
 
-	repo.Add(order.Order{
-		ID:          1,
-		Customer:    "Андрей",
-		Address:     "Москва",
-		IsDelivered: false,
-	})
-	repo.Add(order.Order{
-		ID:          2,
-		Customer:    "Иван",
-		Address:     "Питер",
-		IsDelivered: false,
-	})
-	repo.Add(order.Order{
-		ID:          3,
-		Customer:    "Петр",
-		Address:     "Казань",
-		IsDelivered: false,
-	})
-	repo.Add(order.Order{
-		ID:          4,
-		Customer:    "Катя",
-		Address:     "ЕКБ",
-		IsDelivered: false,
-	})
+	handler := apphttp.RecoveryMiddleware(
+		apphttp.LoggingMiddleware(server),
+	)
 
-	svc.DeliverMany([]int{1, 2, 3, 99})
-	svc.PrintAllOrders()
+	log.Println("Сервер запущен на http://localhost:8080")
+	log.Fatal(http.ListenAndServe(":8080", handler))
 }

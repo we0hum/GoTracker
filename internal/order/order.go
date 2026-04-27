@@ -3,14 +3,14 @@ package order
 import "errors"
 
 type Order struct {
-	ID          int
-	Customer    string
-	Address     string
-	IsDelivered bool
+	ID       int    `json:"id"`
+	Customer string `json:"name"`
+	Address  string `json:"address"`
+	Status   string `json:"status"`
 }
 
 func (o *Order) MarkDelivered() {
-	o.IsDelivered = true
+	o.Status = "delivered"
 }
 
 var ErrOrderNotFound = errors.New("order not found")
