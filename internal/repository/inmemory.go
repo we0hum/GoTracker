@@ -16,10 +16,11 @@ func NewInMemoryOrderRepo() *InMemoryOrderRepo {
 	}
 }
 
-func (or *InMemoryOrderRepo) Add(order order.Order) {
+func (or *InMemoryOrderRepo) Add(order order.Order) error {
 	or.mu.Lock()
 	defer or.mu.Unlock()
 	or.orders[order.ID] = order
+	return nil
 }
 
 func (or *InMemoryOrderRepo) GetByID(id int) (order.Order, error) {

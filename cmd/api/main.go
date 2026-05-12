@@ -1,6 +1,7 @@
 package main
 
 import (
+	"GoTracker/internal/middleware"
 	"log"
 	"net/http"
 
@@ -14,8 +15,8 @@ func main() {
 	svc := service.NewOrderService(repo)
 	server := apphttp.NewHandler(svc)
 
-	handler := apphttp.RecoveryMiddleware(
-		apphttp.LoggingMiddleware(server),
+	handler := middleware.RecoveryMiddleware(
+		middleware.LoggingMiddleware(server),
 	)
 
 	log.Println("Сервер запущен на http://localhost:8080")
