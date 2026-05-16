@@ -3,14 +3,17 @@ package queue
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/segmentio/kafka-go"
 )
 
-func StartConsumer() {
+func StartConsumer(broker string) {
+	if broker == "" {
+		fmt.Println("KAFKA_BROKER не настроен, Kafka consumer отключён")
+		return
+	}
+
 	go func() {
-		broker := os.Getenv("KAFKA_BROKER")
 		r := kafka.NewReader(kafka.ReaderConfig{
 			Brokers: []string{broker},
 			Topic:   "orders",

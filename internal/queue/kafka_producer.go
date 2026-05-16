@@ -4,6 +4,7 @@ import (
 	"GoTracker/internal/order"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -15,6 +16,10 @@ var topic = "orders"
 
 func SendOrderCreated(o order.Order) error {
 	broker := os.Getenv("KAFKA_BROKER")
+	if broker == "" {
+		return errors.New("KAFKA_BROKER не настроен")
+	}
+
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:  []string{broker},
 		Topic:    topic,

@@ -34,7 +34,7 @@ func (c *RedisCache) Get(id int) (order.Order, error) {
 	ctx := context.Background()
 	data, err := c.client.Get(ctx, c.key(id)).Result()
 	if err == redis.Nil {
-		return o, fmt.Errorf("not found in cache")
+		return o, order.ErrOrderNotFound
 	}
 	if err != nil {
 		return o, err
@@ -55,4 +55,8 @@ func (c *RedisCache) Set(o order.Order) error {
 func (c *RedisCache) Delete(id int) error {
 	ctx := context.Background()
 	return c.client.Del(ctx, c.key(id)).Err()
+}
+
+func (c *RedisCache) Close() error {
+	return c.client.Close()
 }

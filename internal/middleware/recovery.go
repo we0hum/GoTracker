@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"GoTracker/internal/utils"
 	"log"
 	"net/http"
 )
@@ -10,8 +11,7 @@ func RecoveryMiddleware(next http.Handler) http.Handler {
 		defer func() {
 			if err := recover(); err != nil {
 				log.Printf("panic: %v", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("Internal Server Error"))
+				utils.WriteError(w, http.StatusInternalServerError, "internal server error")
 			}
 		}()
 

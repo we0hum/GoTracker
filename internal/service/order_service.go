@@ -5,7 +5,6 @@ import (
 	"GoTracker/internal/order"
 	"GoTracker/internal/queue"
 	"GoTracker/internal/repository"
-	"fmt"
 )
 
 type OrderService struct {
@@ -18,23 +17,29 @@ func NewOrderService(repo repository.Repository, cache *cache.RedisCache) *Order
 }
 
 func (os *OrderService) AddOrder(o order.Order) (order.Order, error) {
-	err := os.repo.Add(o)
+	created, err := os.repo.Add(o)
 	if err != nil {
 		return order.Order{}, err
 	}
-	_ = os.cache.Delete(o.ID)
-	_ = queue.SendOrderCreated(o)
-	return o, nil
+
+	if os.cache != nil {
+		_ = os.cache.Delete(created.ID)
+	}
+
+	if err := queue.SendOrderCreated(created); err != nil {
+		return created, err
+	}
+
+	return created, nil
 }
 
 func (os *OrderService) GetAll() ([]order.Order, error) {
-	return os.repo.GetAll(), nil
+	return os.repo.GetAll()
 }
 
 func (os *OrderService) GetOrderByID(id int) (order.Order, error) {
 	if os.cache != nil {
 		if o, err := os.cache.Get(id); err == nil {
-			fmt.Println("[Cache] Найден заказ в Redis")
 			return o, nil
 		}
 	}
@@ -47,14 +52,30 @@ func (os *OrderService) GetOrderByID(id int) (order.Order, error) {
 	if os.cache != nil {
 		_ = os.cache.Set(o)
 	}
+
 	return o, nil
 }
 
 func (os *OrderService) Update(o order.Order) (order.Order, error) {
-	err := os.repo.Update(o)
-	if err != nil {
-		return o, err
+	if err := os.repo.Update(o); err != nil {
+		return order.Order{}, err
 	}
-	_ = os.cache.Delete(o.ID)
-	return o, nil
+
+	if os.cache != nil {
+		_ = os.cache.Delete(o.ID)
+	}
+
+	return os.repo.GetByID(o.ID)
+}
+
+func (os *OrderService) Delete(id int) error {
+	if err := os.repo.Delete(id); err != nil {
+		return err
+	}
+
+	if os.cache != nil {
+		_ = os.cache.Delete(id)
+	}
+
+	return nil
 }

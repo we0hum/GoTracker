@@ -19,4 +19,22 @@
 
 ```bash
 psql -U postgres -d gotracker -f migrations/001_create_orders.sql
+```
+
+## 🚀 Доступные API эндпоинты
+
+- `GET /orders` — получить список заказов
+- `GET /orders/{id}` — получить заказ по ID
+- `POST /orders` — создать заказ
+- `PUT /orders/{id}` — обновить заказ
+- `DELETE /orders/{id}` — удалить заказ
+
+## 🌱 Переменные окружения
+
+- `DATABASE_URL` — PostgreSQL DSN
+- `PORT` — порт для HTTP-сервера (по умолчанию `8080`)
+- `REDIS_ADDR` — адрес Redis
+- `REDIS_TTL` — время жизни кеша в секундах
+- `KAFKA_BROKER` — адрес Kafka-брокера
+- `APP_ENV` — среда выполнения
 

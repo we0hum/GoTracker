@@ -1,46 +1,42 @@
 package main
 
 import (
-	"GoTracker/internal/middleware"
-	"log"
-	"net/http"
-
 	db "GoTracker/internal"
 	"GoTracker/internal/cache"
+	"GoTracker/internal/config"
 	apphttp "GoTracker/internal/http"
+	"GoTracker/internal/middleware"
 	"GoTracker/internal/queue"
 	"GoTracker/internal/repository"
 	"GoTracker/internal/service"
-	"os"
-	"strconv"
-
-	"github.com/joho/godotenv"
+	"log"
+	"net/http"
 )
 
 func main() {
-	_ = godotenv.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	dsn := os.Getenv("DATABASE_URL")
-
-	dbase := db.MustConnect(dsn)
-
+	dbase := db.MustConnect(cfg.DatabaseURL)
 	defer dbase.Close()
 
-	cacheTTL, _ := strconv.Atoi(os.Getenv("REDIS_TTL"))
-	redisCache := cache.NewRedisCache(os.Getenv("REDIS_ADDR"), cacheTTL)
+	redisCache := cache.NewRedisCache(cfg.RedisAddr, cfg.RedisTTL)
+	defer redisCache.Close()
 
-	queue.StartConsumer()
+	queue.StartConsumer(cfg.KafkaBroker)
 
 	repo := repository.NewPostgresOrderRepo(dbase)
-	svc := service.NewOrderService(repo, redisCache)
-	server := apphttp.NewHandler(svc)
+	orderService := service.NewOrderService(repo, redisCache)
+	router := apphttp.NewRouter(orderService)
 
 	handler := middleware.RecoveryMiddleware(
-		middleware.LoggingMiddleware(server),
+		middleware.LoggingMiddleware(router),
 	)
 
-	log.Println("Сервер запущен на http://localhost:8080")
-	if err := http.ListenAndServe(":8080", handler); err != nil {
+	log.Printf("Сервер запущен на http://localhost:%s", cfg.Port)
+	if err := http.ListenAndServe(":"+cfg.Port, handler); err != nil {
 		log.Fatal(err)
 	}
 }
