@@ -43,7 +43,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGetAll(w http.ResponseWriter, r *http.Request) {
-	orders, _ := h.service.ListOrders()
+	orders, _ := h.service.GetAll()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(orders)
 }
@@ -61,12 +61,7 @@ func (h *Handler) handleCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if o.Status != "pending" && o.Status != "delivered" {
-		utils.WriteError(w, http.StatusBadRequest, "невалидный статус")
-		return
-	}
-
-	created, _ := h.service.CreateOrder(o)
+	created, _ := h.service.AddOrder(o)
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -87,8 +82,8 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Address string `json:"address"`
-		Status  string `json:"status"`
+		Address     string `json:"address"`
+		IsDelivered bool   `json:"is_delivered"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -101,12 +96,11 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Status != "pending" && req.Status != "delivered" {
-		utils.WriteError(w, http.StatusBadRequest, "невалидный статус")
-		return
-	}
-
-	updated, err := h.service.UpdateOrder(id, req.Address, req.Status)
+	updated, err := h.service.Update(order.Order{
+		ID:          id,
+		Address:     req.Address,
+		IsDelivered: req.IsDelivered,
+	})
 	if err != nil {
 		utils.WriteError(w, http.StatusNotFound, err.Error())
 		return

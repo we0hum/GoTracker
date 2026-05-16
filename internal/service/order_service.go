@@ -1,73 +1,60 @@
 package service
 
 import (
+	"GoTracker/internal/cache"
 	"GoTracker/internal/order"
+	"GoTracker/internal/queue"
 	"GoTracker/internal/repository"
 	"fmt"
-	"sync"
 )
 
 type OrderService struct {
-	repo repository.Repository
+	repo  repository.Repository
+	cache *cache.RedisCache
 }
 
-func NewOrderService(repo repository.Repository) *OrderService {
-	return &OrderService{repo: repo}
+func NewOrderService(repo repository.Repository, cache *cache.RedisCache) *OrderService {
+	return &OrderService{repo: repo, cache: cache}
 }
 
-func (os *OrderService) PrintAllOrders() {
-	for _, order := range os.repo.GetAll() {
-		fmt.Printf("ID: %d, %s, Delivered: %v\n", order.ID, order.Customer, order.Status)
-	}
-}
-
-func (os *OrderService) DeliverMany(ids []int) {
-	var wg sync.WaitGroup
-
-	for _, id := range ids {
-		wg.Add(1)
-		idOrder := id
-		go func(id int) {
-			defer wg.Done()
-			order, err := os.repo.GetByID(id)
-			if err == nil {
-				order.MarkDelivered()
-				err1 := os.repo.Update(order)
-				if err1 != nil {
-					fmt.Printf("Ошибка при обновлении ID %d: %v\n", id, err1)
-				} else {
-					fmt.Printf("Order %d delivered\n", order.ID)
-				}
-			} else {
-				fmt.Printf("Ошибка:%v (ID: %d)\n", err, id)
-			}
-		}(idOrder)
-	}
-
-	wg.Wait()
-}
-
-func (os *OrderService) CreateOrder(o order.Order) (order.Order, error) {
-	os.repo.Add(o)
-	return o, nil
-}
-
-func (os *OrderService) ListOrders() ([]order.Order, error) {
-	return os.repo.GetAll(), nil
-}
-
-func (os *OrderService) UpdateOrder(id int, address string, status string) (order.Order, error) {
-	o, err := os.repo.GetByID(id)
+func (os *OrderService) AddOrder(o order.Order) (order.Order, error) {
+	err := os.repo.Add(o)
 	if err != nil {
 		return order.Order{}, err
 	}
+	_ = os.cache.Delete(o.ID)
+	_ = queue.SendOrderCreated(o)
+	return o, nil
+}
 
-	o.Address = address
-	o.Status = status
+func (os *OrderService) GetAll() ([]order.Order, error) {
+	return os.repo.GetAll(), nil
+}
 
-	if err := os.repo.Update(o); err != nil {
-		return order.Order{}, err
+func (os *OrderService) GetOrderByID(id int) (order.Order, error) {
+	if os.cache != nil {
+		if o, err := os.cache.Get(id); err == nil {
+			fmt.Println("[Cache] Найден заказ в Redis")
+			return o, nil
+		}
 	}
 
+	o, err := os.repo.GetByID(id)
+	if err != nil {
+		return o, err
+	}
+
+	if os.cache != nil {
+		_ = os.cache.Set(o)
+	}
+	return o, nil
+}
+
+func (os *OrderService) Update(o order.Order) (order.Order, error) {
+	err := os.repo.Update(o)
+	if err != nil {
+		return o, err
+	}
+	_ = os.cache.Delete(o.ID)
 	return o, nil
 }
