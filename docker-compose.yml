@@ -1,12 +1,12 @@
 services:
   postgres:
     image: postgres:15
-    container_name: goshop-db
+    container_name: gotracker-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
-      POSTGRES_DB: goshop
+      POSTGRES_DB: gotracker
     ports:
       - "5435:5432"
     volumes:
@@ -16,7 +16,7 @@ services:
 
   redis:
     image: redis:7
-    container_name: goshop-redis
+    container_name: gotracker-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -51,6 +51,24 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
         - zookeeper
+    networks:
+      - backend
+networks:
+  backend:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: gotracker-api
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - redis
+      - kafka
     networks:
       - backend
 networks:

@@ -1,0 +1,10 @@
+bin/
+pgdata/
+redisdata/
+.git
+.idea
+*.md
+*.sql
+node_modules
+vendor
+*.log

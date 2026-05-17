@@ -1,11 +1,17 @@
-# Default ignored files
-/shelf/
-/workspace.xml
-# Editor-based HTTP Client requests
-/httpRequests/
-# Datasource local storage ignored files
-/dataSources/
-/dataSources.local.xml
+# Бинарники
+/bin/
+*.exe
+*.out
+
+# Конфиденциальные переменные
 .env
-/pgdata
-/redisdata
+.env.*
+
+# Кэш и сборка
+*.log
+*.tmp
+coverage.out
+
+# IDE
+.vscode/
+.idea/

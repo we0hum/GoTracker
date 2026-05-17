@@ -38,3 +38,16 @@ psql -U postgres -d gotracker -f migrations/001_create_orders.sql
 - `KAFKA_BROKER` — адрес Kafka-брокера
 - `APP_ENV` — среда выполнения
 
+## 🐳 Запуск через Docker Compose
+
+1. Скопируйте `.env.example` в `.env` и заполните значения.
+2. Постройте и запустите сервисы:
+
+```bash
+docker-compose up --build
+```
+
+3. API будет доступен на `http://localhost:8080`.
+
+Если нужно только запустить бэкенд без Kafka, закомментируйте сервисы `zookeeper` и `kafka` в `docker-compose.yml`.
+
